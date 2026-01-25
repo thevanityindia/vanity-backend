@@ -8,6 +8,9 @@ const Category = require('../models/Category');
 const Inventory = require('../models/Inventory');
 const Notification = require('../models/Notification');
 const { sendOrderStatusUpdateEmail } = require('../utils/emailService');
+const multer = require('multer');
+const xlsx = require('xlsx');
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Apply authentication and admin authorization to all routes
 router.use(protect);
@@ -31,7 +34,7 @@ router.post('/inventory/sync', async (req, res, next) => {
                     sku: product.sku || `SKU-${product._id.toString().slice(-8).toUpperCase()}`,
                     category: product.category,
                     currentStock: product.stock || 0,
-                    unitCost: (parseFloat(product.price) || 0) * 0.6,
+                    unitCost: (product.price || 0) * 0.6,
                     status: (product.stock || 0) > 0 ? 'in_stock' : 'out_of_stock'
                 });
                 syncedCount++;
@@ -194,6 +197,78 @@ router.get('/products', async (req, res, next) => {
             totalPages: Math.ceil(total / parseInt(limit)),
             data: products
         });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @route   POST /api/admin/products/import-excel
+// @desc    Bulk import products from Excel
+// @access  Private/Admin
+router.post('/products/import-excel', upload.single('file'), async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
+        }
+
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(sheet);
+
+        if (!data.length) {
+            return res.status(400).json({ success: false, error: 'Empty file' });
+        }
+
+        let count = 0;
+        const errors = [];
+
+        for (const row of data) {
+            try {
+                // Basic validation
+                if (!row.Name || !row.Price || !row.Category) {
+                    continue; // Skip invalid rows
+                }
+
+                const productData = {
+                    name: row.Name,
+                    price: Number(row.Price),
+                    originalPrice: Number(row['Original Price'] || row.OriginalPrice || row.Price),
+                    description: row.Description || '',
+                    category: row.Category,
+                    subcategory: row.Subcategory || '',
+                    stock: row.Stock || 0,
+                    sku: row.SKU || `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    brand: row.Brand || '',
+                    shade: row.Shade || '',
+                    extraInfo: row['Extra Info'] || row.ExtraInfo || '',
+                    isPublic: true,
+                    images: row.Image ? [{ imageUrl: row.Image }] : []
+                };
+
+                const product = await Product.create(productData);
+
+                // Sync Inventory
+                await Inventory.create({
+                    productId: product._id,
+                    currentStock: product.stock,
+                    lowStockThreshold: 5,
+                    sku: product.sku
+                });
+
+                count++;
+            } catch (err) {
+                console.error("Row error:", err);
+                errors.push(err.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            count,
+            errors: errors.length > 0 ? errors : undefined
+        });
+
     } catch (error) {
         next(error);
     }

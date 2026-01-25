@@ -35,6 +35,8 @@ const sendOrderConfirmationEmail = async (order, user) => {
                 <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <p><strong>Order Number:</strong> ${order.orderNumber}</p>
                     <p><strong>Order Date:</strong> ${orderDate}</p>
+                    <p><strong>Payment Method:</strong> ${order.paymentMethod.toUpperCase()}</p>
+                    <p><strong>Payment Status:</strong> ${order.paymentStatus.toUpperCase()}</p>
                     <p><strong>Status:</strong> ${order.status}</p>
                 </div>
 

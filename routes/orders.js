@@ -63,7 +63,15 @@ router.get('/:id', protect, async (req, res, next) => {
 // @access  Private
 router.post('/', protect, async (req, res, next) => {
     try {
-        const { items, shippingAddress, billingAddress, paymentMethod, customerNotes } = req.body;
+        const {
+            items,
+            shippingAddress,
+            billingAddress,
+            paymentMethod,
+            customerNotes,
+            paymentStatus,
+            paymentDetails
+        } = req.body;
 
         if (!items || items.length === 0) {
             return res.status(400).json({
@@ -132,10 +140,12 @@ router.post('/', protect, async (req, res, next) => {
             shippingAddress,
             billingAddress: billingAddress || shippingAddress,
             paymentMethod,
+            paymentStatus: paymentStatus || 'pending',
+            paymentDetails,
             customerNotes,
             statusHistory: [{
                 status: 'pending',
-                note: 'Order placed'
+                note: paymentStatus === 'completed' ? 'Order placed and paid' : 'Order placed'
             }]
         });
 
