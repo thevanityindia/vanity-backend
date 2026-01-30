@@ -1,4 +1,4 @@
-const sendEmail = require('./sendEmail');
+ const sendEmail = require('./sendEmail');
 
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -86,7 +86,7 @@ const sendOrderConfirmationEmail = async (order, user) => {
 
     try {
         await sendEmail({
-            email: user.email,
+            email: `${user.email}, thevanityindia@gmail.com`,
             subject: `Order Confirmation - ${order.orderNumber}`,
             message: `Thank you for your order! Your order number is ${order.orderNumber}.`,
             html
