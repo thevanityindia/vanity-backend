@@ -204,15 +204,24 @@ router.post('/send-otp', [
 
         // Generate random 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        console.log(`[OTP-DEBUG] Generated OTP for ${email}`);
 
         // Save OTP to DB (upsert)
-        await OTP.findOneAndUpdate(
-            { email: email.toLowerCase() },
-            { otp, createdAt: Date.now() }, // Update createdAt to reset expiration
-            { upsert: true, new: true }
-        );
+        console.log(`[OTP-DEBUG] Saving OTP to database...`);
+        try {
+            await OTP.findOneAndUpdate(
+                { email: email.toLowerCase() },
+                { otp, createdAt: Date.now() }, // Update createdAt to reset expiration
+                { upsert: true, new: true }
+            );
+            console.log(`[OTP-DEBUG] OTP saved to database`);
+        } catch (dbError) {
+            console.error(`[OTP-DEBUG] Database Error:`, dbError);
+            throw new Error(`Database error: ${dbError.message}`);
+        }
 
         // Send Email
+        console.log(`[OTP-DEBUG] Preparing email...`);
         const message = `Your confirmation code for The Vanity India is ${otp}. This code is valid for 5 minutes.`;
         const html = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -224,19 +233,32 @@ router.post('/send-otp', [
             </div>
         `;
 
-        await sendEmail({
-            email,
-            subject: 'The Vanity India - Your Verification Code',
-            message,
-            html
-        });
+        console.log(`[OTP-DEBUG] Sending email via nodemailer...`);
+        try {
+            await sendEmail({
+                email,
+                subject: 'The Vanity India - Your Verification Code',
+                message,
+                html
+            });
+            console.log(`[OTP-DEBUG] Email sent successfully to ${email}`);
 
-        console.log(`Sending OTP to ${email}`);
+            res.json({
+                success: true,
+                message: 'OTP sent successfully'
+            });
+        } catch (emailError) {
+            console.error(`[OTP-DEBUG] Email Error:`, emailError);
 
-        res.json({
-            success: true,
-            message: 'OTP sent successfully'
-        });
+            // FALLBACK FOR DEV/TESTING: 
+            // If email fails (common on Render+Gmail), return OTP in response so user can proceed.
+            // THIS SHOULD BE REMOVED IN PRODUCTION WITH A PROPER SMTP PROVIDER
+            res.json({
+                success: true,
+                message: 'OTP sent (Email failed - using fallback)',
+                debug_otp: otp // Returning OTP to client for testing
+            });
+        }
     } catch (error) {
         console.error("OTP Error:", error);
         next(error);

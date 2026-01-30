@@ -43,13 +43,15 @@ const blogSchema = new mongoose.Schema({
 
 // Middleware to create slug from title before saving
 blogSchema.pre('save', function (next) {
-    if (this.isModified('title')) {
+    if (this.isModified('title') || !this.slug) {
         this.slug = this.title
             .toLowerCase()
             .replace(/[^\w ]+/g, '')
             .replace(/ +/g, '-');
     }
-    next();
+    if (typeof next === 'function') {
+        next();
+    }
 });
 
 module.exports = mongoose.model('Blog', blogSchema);

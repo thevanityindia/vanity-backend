@@ -365,6 +365,37 @@ router.delete('/products/:id', async (req, res, next) => {
 
 // ==================== INVENTORY MANAGEMENT ====================
 
+// @route   GET /api/admin/inventory/low-stock
+// @desc    Get low stock inventory items
+// @access  Private/Admin
+router.get('/inventory/low-stock', async (req, res, next) => {
+    try {
+        const { limit = 5 } = req.query;
+        const lowStockItems = await Inventory.find({
+            status: { $in: ['low_stock', 'out_of_stock'] }
+        })
+            .populate('productId', 'name')
+            .sort('currentStock')
+            .limit(parseInt(limit));
+
+        // Format for dashboard
+        const formatted = lowStockItems.map(item => ({
+            id: item._id,
+            name: item.productName || item.productId?.name || 'Unknown',
+            stock: item.currentStock,
+            reorderLevel: item.reorderLevel || 10,
+            sku: item.sku
+        }));
+
+        res.json({
+            success: true,
+            data: formatted
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // @route   GET /api/admin/inventory
 // @desc    Get all inventory
 // @access  Private/Admin
