@@ -1,4 +1,4 @@
- const sendEmail = require('./sendEmail');
+const sendEmail = require('./sendEmail');
 
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {

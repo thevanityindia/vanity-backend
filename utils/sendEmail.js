@@ -2,16 +2,21 @@ const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
     // Create transporter
+    // Create transporter
+
     const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // true for 465, false for other ports
+        host: process.env.SMTP_HOST || 'smtp.sendgrid.net', // Default to SendGrid or configured host
+        port: process.env.SMTP_PORT || 587,
+        secure: false, // true for 465, false for other ports
         auth: {
-            user: process.env.SMTP_EMAIL || 'thevanityindia@gmail.com',
-            pass: process.env.SMTP_PASSWORD // App Password
+            user: process.env.SMTP_USER || process.env.SMTP_EMAIL,
+            pass: process.env.SMTP_PASSWORD || process.env.EMAIL_PASS
         },
-        logger: true, // log info to console  
-        debug: true   // include SMTP traffic in the logs
+        tls: {
+            rejectUnauthorized: false
+        },
+        logger: true,
+        debug: true
     });
 
     // Define email options
